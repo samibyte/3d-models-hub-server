@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { MongoClient, ServerApiVersion } from "mongodb";
+import { MongoClient, ObjectId, ServerApiVersion } from "mongodb";
 const app = express();
 
 const port = process.env.PORT || 5500``;
@@ -25,9 +25,54 @@ async function run() {
     const db = client.db("3dModelDb");
     const modelsColl = db.collection("3d-models");
 
+    //read
     app.get("/models", async (req, res) => {
       const result = await modelsColl.find().toArray();
       res.json(result);
+    });
+
+    app.get("/latest-models", async (req, res) => {
+      const result = await modelsColl
+        .find()
+        .sort({ created_at: -1 })
+        .limit(6)
+        .toArray();
+      res.json(result);
+    });
+
+    //find
+    app.get("/models/:id", async (req, res) => {
+      const { id } = req.params;
+      const result = await modelsColl.findOne({ _id: new ObjectId(id) });
+      res.send({ success: true, result });
+    });
+
+    //create
+    app.post("/models", async (req, res) => {
+      const newModel = req.body;
+      const result = await modelsColl.insertOne(newModel);
+      res.send({ success: true, result });
+    });
+
+    // update
+    app.put("/models/:id", async (req, res) => {
+      const { id } = req.params;
+      const updateInfo = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateModel = {
+        $set: updateInfo,
+      };
+      const result = await modelsColl.updateOne(filter, updateModel);
+
+      res.send({ success: true, result });
+    });
+
+    // delete
+    app.delete("/models/:id", async (req, res) => {
+      const { id } = req.params;
+      const result = await modelsColl.deleteOne({ _id: new ObjectId(id) });
+
+      res.send({ success: true, result });
     });
 
     await client.db("admin").command({ ping: 1 });
