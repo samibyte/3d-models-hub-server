@@ -1,0 +1,25 @@
+{
+  "name": "3d-models-hub-server",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/samibyte/3d-models-hub-server#readme",
+  "bugs": {
+    "url": "https://github.com/samibyte/3d-models-hub-server/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/samibyte/3d-models-hub-server.git"
+  },
+  "license": "MIT",
+  "author": "samibyte",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node --env-file=.env index.js",
+    "dev": "node --watch --env-file=.env index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  }
+}
