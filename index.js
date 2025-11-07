@@ -63,6 +63,7 @@ async function run() {
 
     const db = client.db("3dModelDb");
     const modelsColl = db.collection("3d-models");
+    const downloadsColl = db.collection("downloads");
 
     //read
     app.get("/models", async (req, res) => {
@@ -119,6 +120,21 @@ async function run() {
       const result = await modelsColl.deleteOne({ _id: new ObjectId(id) });
 
       res.send({ success: true, result });
+    });
+
+    // download related api
+    app.get("/downloads", verifyFBToken, async (req, res) => {
+      const email = req.query.email;
+      const result = await downloadsColl
+        .find({ downloaded_by: email })
+        .toArray();
+      res.json(result);
+    });
+
+    app.post("/downloads", verifyFBToken, async (req, res) => {
+      const myDownload = req.body;
+      const result = await downloadsColl.insertOne(myDownload);
+      res.send(result);
     });
 
     // await client.db("admin").command({ ping: 1 });
