@@ -80,6 +80,19 @@ async function run() {
       res.json(result);
     });
 
+    app.get("/search", async (req, res) => {
+      const searchText = req.query.searchText;
+      const result = await modelsColl
+        .find({
+          name: {
+            $regex: searchText,
+            $options: "i",
+          },
+        })
+        .toArray();
+      res.json(result);
+    });
+
     //find
     app.get("/model-details/:id", verifyFBToken, async (req, res) => {
       const { id } = req.params;
@@ -132,9 +145,19 @@ async function run() {
     });
 
     app.post("/downloads", verifyFBToken, async (req, res) => {
-      const myDownload = req.body;
-      const result = await downloadsColl.insertOne(myDownload);
-      res.send(result);
+      const model = req.body;
+      const result = await downloadsColl.insertOne(model);
+
+      const filter = { _id: new ObjectId(model._id) };
+      const updateDoc = {
+        $inc: {
+          downloads: 1,
+        },
+      };
+
+      const downloadCounted = modelsColl.updateOne(filter, updateDoc);
+
+      res.send(result, downloadCounted);
     });
 
     // await client.db("admin").command({ ping: 1 });
