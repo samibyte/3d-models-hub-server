@@ -1,11 +1,50 @@
 import express from "express";
 import cors from "cors";
 import { MongoClient, ObjectId, ServerApiVersion } from "mongodb";
+import admin from "firebase-admin";
+import fs from "fs";
 const app = express();
+const port = process.env.PORT || 5500;
 
-const port = process.env.PORT || 5500``;
+//middleware
 app.use(cors());
 app.use(express.json());
+
+let serviceAccount;
+if (process.env.FIREBASE_ADMIN_KEY) {
+  serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_KEY);
+} else {
+  serviceAccount = JSON.parse(
+    fs.readFileSync("./firebaseAdminKey.json", "utf8")
+  );
+}
+
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+}
+
+const verifyFBToken = async (req, res, next) => {
+  const authorization = req.headers.authorization;
+
+  if (!authorization) {
+    return res.status(401).send({
+      message: "unauthorized access. Token not found",
+    });
+  }
+  const token = authorization.split(" ")[1];
+
+  try {
+    await admin.auth().verifyIdToken(token);
+
+    next();
+  } catch (err) {
+    res.status(401).send({
+      message: "unauthorized access. Token not found",
+    });
+  }
+};
 
 const uri = process.env.DB_URI;
 
@@ -20,7 +59,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
 
     const db = client.db("3dModelDb");
     const modelsColl = db.collection("3d-models");
@@ -41,21 +80,28 @@ async function run() {
     });
 
     //find
-    app.get("/models/:id", async (req, res) => {
+    app.get("/model-details/:id", verifyFBToken, async (req, res) => {
       const { id } = req.params;
       const result = await modelsColl.findOne({ _id: new ObjectId(id) });
       res.send({ success: true, result });
     });
 
+    app.get("/my-model", verifyFBToken, async (req, res) => {
+      const email = req.query.email;
+      const query = { created_by: email };
+      const result = await modelsColl.find(query).toArray();
+      res.send(result);
+    });
+
     //create
-    app.post("/models", async (req, res) => {
+    app.post("/models", verifyFBToken, async (req, res) => {
       const newModel = req.body;
       const result = await modelsColl.insertOne(newModel);
       res.send({ success: true, result });
     });
 
     // update
-    app.put("/models/:id", async (req, res) => {
+    app.put("/models/:id", verifyFBToken, async (req, res) => {
       const { id } = req.params;
       const updateInfo = req.body;
       const filter = { _id: new ObjectId(id) };
@@ -68,14 +114,14 @@ async function run() {
     });
 
     // delete
-    app.delete("/models/:id", async (req, res) => {
+    app.delete("/models/:id", verifyFBToken, async (req, res) => {
       const { id } = req.params;
       const result = await modelsColl.deleteOne({ _id: new ObjectId(id) });
 
       res.send({ success: true, result });
     });
 
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
